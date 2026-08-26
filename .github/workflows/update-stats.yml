@@ -12,60 +12,19 @@ jobs:
       contents: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 22
-
-      - name: Install & Run github-readme-stats
-        run: |
-          git clone https://github.com/anuraghazra/github-readme-stats.git
-          cd github-readme-stats
-          
-          # Install dependencies quietly and attempt to fix vulnerabilities
-          npm install --no-fund --no-audit --silent
-          npm audit fix --force --audit-level=high || true
-          npm install express wait-on --no-save --no-fund --no-audit --silent
-
-          # Create a simple server script
-          cat <<'EOF' > server.js
-          import express from 'express';
-          import statsHandler from './api/index.js';
-          import topLangsHandler from './api/top-langs.js';
-          
-          const app = express();
-          const port = 9000;
-          
-          app.get('/api', statsHandler);
-          app.get('/api/top-langs', topLangsHandler);
-          
-          // Explicitly bind to IPv4 loopback
-          app.listen(port, '127.0.0.1', () => {
-            console.log(`Server started on port ${port}`);
-          });
-          EOF
-
-          # Start server in background with output redirection to prevent hanging
-          node server.js > server.log 2>&1 &
-          
-          # Wait for server to start (check TCP port explicitly)
-          npx wait-on tcp:127.0.0.1:9000 --timeout 30000
-        env:
-          # Use the token provided by Actions or a PAT if available
-          PAT_1: ${{ secrets.GITHUB_TOKEN }} 
+        uses: actions/checkout@v6
 
       - name: Fetch Stats
         run: |
           mkdir -p .github
-          # General Stats
-          curl -o .github/github-stats.svg "http://localhost:9000/api?username=KasunCSB&show_icons=true&theme=tokyonight&hide_border=true&bg_color=00000000&title_color=00ffc8&icon_color=00ffc8&text_color=8B949E"
-          # Top Languages
-          curl -o .github/top-langs.svg "http://localhost:9000/api/top-langs/?username=KasunCSB&layout=compact&theme=tokyonight&hide_border=true&bg_color=00000000&title_color=00ffc8&text_color=8B949E"
+          BASE="https://github-stats-extended.vercel.app"
+          curl -fsSL -o .github/github-stats.svg \
+            "$BASE/api?username=KasunCSB&show_icons=true&theme=tokyonight&hide_border=true&bg_color=00000000&title_color=00ffc8&icon_color=00ffc8&text_color=8B949E"
+          curl -fsSL -o .github/top-langs.svg \
+            "$BASE/api/top-langs/?username=KasunCSB&layout=compact&theme=tokyonight&hide_border=true&bg_color=00000000&title_color=00ffc8&text_color=8B949E"
 
       - name: Commit & Push
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Update GitHub stats [skip ci]"
           file_pattern: .github/*.svg
